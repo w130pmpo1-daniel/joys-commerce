@@ -1,13 +1,24 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import type { LoginData } from '../services/api';
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<LoginData>({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const from = (location.state as { from?: string })?.from || '/';
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +29,12 @@ export default function SignIn() {
       const res = await authApi.login(formData);
       localStorage.setItem('customer', JSON.stringify(res.data.customer));
       localStorage.setItem('token', res.data.access_token);
-      navigate('/');
+      login({ 
+        id: res.data.customer.id, 
+        name: res.data.customer.name || '', 
+        email: res.data.customer.email || '' 
+      });
+      navigate(from, { replace: true });
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       setError(error.response?.data?.detail || 'Login failed');

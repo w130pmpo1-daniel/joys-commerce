@@ -30,6 +30,11 @@ class ProductBase(BaseModel):
     stock: int = 0
     category: Optional[str] = None
     sku: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    image_url: Optional[str] = None
+    thumbnail: Optional[str] = None
+    gallery: Optional[str] = None
 
 
 class ProductCreate(ProductBase):
@@ -43,6 +48,11 @@ class ProductUpdate(BaseModel):
     stock: Optional[int] = None
     category: Optional[str] = None
     sku: Optional[str] = None
+    brand: Optional[str] = None
+    model: Optional[str] = None
+    image_url: Optional[str] = None
+    thumbnail: Optional[str] = None
+    gallery: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -181,3 +191,61 @@ class AdminToken(BaseModel):
     access_token: str
     token_type: str
     admin: AdminResponse
+
+
+class CartItemCreate(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+
+class CartItemResponse(BaseModel):
+    id: int
+    cart_id: int
+    product_id: int
+    quantity: int
+    price: float
+    product: "CartProductResponse"
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CartProductResponse(BaseModel):
+    id: int
+    name: str
+    thumbnail: Optional[str] = None
+    image_url: Optional[str] = None
+    price: float
+
+    class Config:
+        from_attributes = True
+
+
+class CartResponse(BaseModel):
+    id: int
+    customer_id: Optional[int] = None
+    session_id: Optional[str] = None
+    items: list[CartItemResponse] = []
+    total_amount: float = 0
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CartCreate(BaseModel):
+    customer_id: Optional[int] = None
+    session_id: Optional[str] = None
+
+
+class AddToCartRequest(BaseModel):
+    product_id: int
+    quantity: int = 1
+    customer_id: Optional[int] = None
+    session_id: Optional[str] = None
+
+
+class UpdateCartItemRequest(BaseModel):
+    quantity: int

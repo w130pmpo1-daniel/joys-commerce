@@ -29,6 +29,8 @@ class Product(Base):
     brand = Column(String(100))
     model = Column(String(100))
     image_url = Column(String(500))
+    thumbnail = Column(String(500))
+    gallery = Column(String(2000))
     specifications = Column(String(2000))
     features = Column(String(2000))
     is_active = Column(Boolean, default=True)
@@ -75,5 +77,37 @@ class Customer(Base):
     verification_token = Column(String(255), nullable=True)
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Cart(Base):
+    __tablename__ = "carts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, index=True, nullable=True)
+    session_id = Column(String(255), index=True, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CartItem(Base):
+    __tablename__ = "cart_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cart_id = Column(Integer, index=True, nullable=False)
+    product_id = Column(Integer, index=True, nullable=False)
+    quantity = Column(Integer, default=1)
+    price = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Setting(Base):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    setting_key = Column(String(100), unique=True, nullable=False)
+    setting_value = Column(String(500))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

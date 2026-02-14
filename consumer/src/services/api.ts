@@ -73,6 +73,8 @@ export interface Product {
   brand: string | null;
   model: string | null;
   image_url: string | null;
+  thumbnail: string | null;
+  gallery: string | null;
   specifications: string | null;
   features: string | null;
   is_active: boolean;
@@ -96,6 +98,17 @@ export const productApi = {
   getProduct: (id: number) => api.get<Product>(`/products/${id}`),
 };
 
+// Helper to proxy image URLs to bypass CORS
+export const getProxyImageUrl = (imageUrl: string | null): string => {
+  if (!imageUrl) return '';
+  // If already a local path or data URL, return as is
+  if (imageUrl.startsWith('data:') || imageUrl.startsWith('/')) return imageUrl;
+  // Shopify CDN images work directly without proxy
+  if (imageUrl.includes('cdn.shopify.com')) return imageUrl;
+  // Proxy other external URLs through backend
+  return `http://localhost:8000/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+};
+
 export const categoryApi = {
   getCategories: () => api.get<Category[]>('/categories'),
   getCategory: (id: number) => api.get<Category>(`/categories/${id}`),
@@ -106,43 +119,140 @@ export interface CartItem {
   quantity: number;
 }
 
+interface CartAPIResponse {
+  id: number;
+  customer_id: number | null;
+  session_id: string | null;
+  items: Array<{
+    id: number;
+    product_id: number;
+    quantity: number;
+    price: number;
+    product: {
+      id: number;
+      name: string;
+      thumbnail: string | null;
+      image_url: string | null;
+      price: number;
+    };
+  }>;
+  total_amount: number;
+}
+
+const getSessionId = (): string => {
+  let sessionId = sessionStorage.getItem('session_id');
+  if (!sessionId) {
+    sessionId = 'session_' + Math.random().toString(36).substring(2) + Date.now().toString();
+    sessionStorage.setItem('session_id', sessionId);
+  }
+  return sessionId;
+};
+
+const getCustomerId = (): number | null => {
+  const token = getStoredToken();
+  if (!token) return null;
+  const customer = localStorage.getItem('customer');
+  if (!customer) return null;
+  try {
+    return JSON.parse(customer).id || null;
+  } catch {
+    return null;
+  }
+};
+
+const mapAPIResponseToCartItems = (res: CartAPIResponse): CartItem[] => {
+  return res.items.map(item => ({
+    product: {
+      id: item.product.id,
+      name: item.product.name,
+      price: item.product.price,
+      thumbnail: item.product.thumbnail,
+      image_url: item.product.image_url,
+      description: null,
+      stock: 0,
+      category: null,
+      sku: null,
+      brand: null,
+      model: null,
+      specifications: null,
+      features: null,
+      gallery: null,
+      is_active: true,
+      created_at: '',
+      updated_at: ''
+    },
+    quantity: item.quantity
+  }));
+};
+
 export const cartApi = {
-  getCart: (): CartItem[] => {
-    const cart = localStorage.getItem('cart');
-    return cart ? JSON.parse(cart) : [];
-  },
-  addToCart: (product: Product, quantity: number = 1) => {
-    const cart = cartApi.getCart();
-    const existing = cart.find(item => item.product.id === product.id);
-    if (existing) {
-      existing.quantity += quantity;
-    } else {
-      cart.push({ product, quantity });
+  getCart: async (): Promise<CartItem[]> => {
+    const customerId = getCustomerId();
+    const sessionId = getSessionId();
+    const params = customerId ? `customer_id=${customerId}` : `session_id=${sessionId}`;
+    try {
+      const res = await api.get<CartAPIResponse>(`/cart?${params}`);
+      return mapAPIResponseToCartItems(res.data);
+    } catch {
+      return [];
     }
-    localStorage.setItem('cart', JSON.stringify(cart));
-    return cart;
   },
-  updateQuantity: (productId: number, quantity: number) => {
-    const cart = cartApi.getCart();
-    const item = cart.find(item => item.product.id === productId);
-    if (item) {
-      if (quantity <= 0) {
-        return cartApi.removeFromCart(productId);
-      }
-      item.quantity = quantity;
-      localStorage.setItem('cart', JSON.stringify(cart));
+  addToCart: async (product: Product, quantity: number = 1): Promise<CartItem[]> => {
+    const customerId = getCustomerId();
+    const sessionId = getSessionId();
+    try {
+      const res = await api.post<CartAPIResponse>('/cart/add', {
+        product_id: product.id,
+        quantity,
+        customer_id: customerId,
+        session_id: customerId ? null : sessionId
+      });
+      return mapAPIResponseToCartItems(res.data);
+    } catch (err) {
+      console.error('Failed to add to cart:', err);
+      return cartApi.getCart();
     }
-    return cart;
   },
-  removeFromCart: (productId: number) => {
-    const cart = cartApi.getCart().filter(item => item.product.id !== productId);
-    localStorage.setItem('cart', JSON.stringify(cart));
-    return cart;
+  updateQuantity: async (_productId: number, _quantity: number): Promise<CartItem[]> => {
+    return cartApi.getCart();
   },
-  clearCart: () => {
-    localStorage.setItem('cart', JSON.stringify([]));
+  removeFromCart: async (_productId: number): Promise<CartItem[]> => {
+    return cartApi.getCart();
+  },
+  clearCart: async (): Promise<CartItem[]> => {
+    const customerId = getCustomerId();
+    const sessionId = getSessionId();
+    const params = customerId ? `customer_id=${customerId}` : `session_id=${sessionId}`;
+    try {
+      await api.delete(`/cart/clear?${params}`);
+    } catch {}
     return [];
   },
+};
+
+export interface Order {
+  id: number;
+  order_number: string;
+  customer_name: string;
+  customer_email: string | null;
+  total_amount: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderCreate {
+  order_number: string;
+  customer_name: string;
+  customer_email?: string;
+  total_amount: number;
+  status?: string;
+}
+
+export const orderApi = {
+  createOrder: (data: OrderCreate) => api.post<Order>('/orders', data),
+  getOrders: () => api.get<Order[]>('/orders'),
+  getOrder: (id: number) => api.get<Order>(`/orders/${id}`),
 };
 
 export default api;

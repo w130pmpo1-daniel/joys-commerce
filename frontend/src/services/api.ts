@@ -24,6 +24,10 @@ export interface Product {
   stock: number;
   category: string | null;
   sku: string | null;
+  brand: string | null;
+  thumbnail: string | null;
+  image_url: string | null;
+  gallery: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

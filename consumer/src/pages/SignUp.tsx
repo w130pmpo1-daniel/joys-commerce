@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import type { RegisterData } from '../services/api';
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<RegisterData>({
     email: '',
     username: '',
@@ -14,6 +16,12 @@ export default function SignUp() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

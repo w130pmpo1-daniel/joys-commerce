@@ -8,6 +8,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const fetchProducts = () => {
     dashboardApi.getProducts()
@@ -85,7 +86,11 @@ export default function Products() {
               </tr>
             ) : (
               products.map((product) => (
-                <tr key={product.id} className="hover:bg-prodex-bg-alt">
+                <tr 
+                  key={product.id} 
+                  className="hover:bg-prodex-bg-alt cursor-pointer transition-colors"
+                  onClick={() => setSelectedProduct(product)}
+                >
                   <td className="px-6 py-4 font-medium text-prodex-text">{product.name}</td>
                   <td className="px-6 py-4 text-prodex-muted">{product.sku || '-'}</td>
                   <td className="px-6 py-4 text-prodex-text">${product.price.toFixed(2)}</td>
@@ -138,6 +143,83 @@ export default function Products() {
           onSubmit={handleUpdate}
           onCancel={() => setEditingProduct(null)}
         />
+      )}
+
+      {selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedProduct(null)}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6 border-b border-prodex-border">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-prodex-text">Product Details</h2>
+                <button onClick={() => setSelectedProduct(null)} className="p-2 hover:bg-prodex-bg-alt rounded-lg">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm text-prodex-muted">Product Name</label>
+                  <p className="font-medium text-prodex-text">{selectedProduct.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-prodex-muted">SKU</label>
+                  <p className="font-medium text-prodex-text">{selectedProduct.sku || '-'}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-prodex-muted">Price</label>
+                  <p className="font-medium text-prodex-text">${selectedProduct.price.toFixed(2)}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-prodex-muted">Stock</label>
+                  <p className="font-medium text-prodex-text">{selectedProduct.stock}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-prodex-muted">Category</label>
+                  <p className="font-medium text-prodex-text">{selectedProduct.category || '-'}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-prodex-muted">Brand</label>
+                  <p className="font-medium text-prodex-text">{selectedProduct.brand || '-'}</p>
+                </div>
+                <div>
+                  <label className="text-sm text-prodex-muted">Status</label>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${selectedProduct.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {selectedProduct.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+              {selectedProduct.description && (
+                <div>
+                  <label className="text-sm text-prodex-muted">Description</label>
+                  <p className="text-prodex-text mt-1">{selectedProduct.description}</p>
+                </div>
+              )}
+              {selectedProduct.thumbnail && (
+                <div>
+                  <label className="text-sm text-prodex-muted">Thumbnail</label>
+                  <img src={selectedProduct.thumbnail} alt={selectedProduct.name} className="mt-1 w-32 h-32 object-cover rounded-lg" />
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-prodex-border flex justify-end gap-2">
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="px-4 py-2 border border-prodex-border rounded-lg hover:bg-prodex-bg-alt"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => { setSelectedProduct(null); setEditingProduct(selectedProduct); }}
+                className="px-4 py-2 bg-prodex-primary text-white rounded-lg hover:bg-blue-600"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
